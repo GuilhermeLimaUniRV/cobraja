@@ -34,6 +34,8 @@ Pedido feito: "adicione um comentário de uma linha explicando a rota /saude em 
 
 ![Hook PostToolUse rodando o lint](prints/03-hook-lint.png)
 
+No print, a linha de atividade mostra "Leu e editado app.js, executado um comando, **recebido um aviso**". O aviso é a mensagem `hook PostToolUse: npm run lint passou`, que o hook devolve depois do Edit. O próprio agente explica que essa mensagem chega à interface do usuário, não ao contexto dele, porque o hook só fala com o agente quando o lint falha (código de saída 2). A edição está no commit desta evidência (`src/app.js`, linha 7).
+
 **Leitura honesta:** na primeira versão o hook era `npm run lint --silent 1>&2 || exit 2`, e quando o lint passava ele não mostrava nada. O segundo relatório marcou isso ("o hook de lint não deixa rastro quando passa"). Na tarefa da spec 002, a edição apareceu como "mudança sem verificação". Depois da medição o hook passou a imprimir uma confirmação visível no sucesso.
 
 ## 4. Contexto — /context numa sessão nova
