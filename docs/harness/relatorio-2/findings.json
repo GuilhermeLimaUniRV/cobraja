@@ -1,0 +1,183 @@
+{
+  "summary": {
+    "projectName": "cobraja",
+    "locale": "en",
+    "modelId": "agent-work-loop-v4",
+    "reportContractVersion": 25,
+    "overview": "Segunda medição, depois de CLAUDE.md, permissões, skill e hook. Os mecanismos agora existem e dois deles foram usados de verdade nesta sessão: a skill nova-spec foi acionada sem ser citada e gerou a spec 002 com dúvidas marcadas, e o gate check:ca acusa 0 de 7 CAs da spec 002. Mas a regra de testes e lint antes do commit ainda depende do agente lembrar, a proibição do .env cobre só a ferramenta Read e o comando cat, o hook de lint não deixa rastro quando passa, e continua sem jeito de saber se uma spec está aprovada. Só há uma sessão observada, então nenhuma melhoria foi comparada com uma tarefa posterior.",
+    "dimensions": [
+      {
+        "id": "task-understanding",
+        "label": "Task Understanding",
+        "score": 58,
+        "summary": "AGENTS.md e CLAUDE.md dão o contexto certo, e a skill nova-spec foi acionada sozinha e parou com três [DÚVIDA] para revisão. Mas nenhuma spec diz se está aprovada (a 002 está como rascunho e a 001 como 'versão 2'), e o 001-plano.md citado pela spec 001 ainda não existe.",
+        "findingRefs": [
+          "spec-approval-still-unmarked"
+        ]
+      },
+      {
+        "id": "controlled-execution",
+        "label": "Controlled Execution",
+        "score": 66,
+        "summary": "npm test, npm run lint e npm run check:ca foram executados nesta sessão, e o settings.json versionado tem allow, ask e deny. A proteção do .env melhorou, mas cobre só Read e cat: outros comandos de leitura do shell continuam liberados.",
+        "findingRefs": [
+          "env-deny-covers-only-read-and-cat"
+        ]
+      },
+      {
+        "id": "change-validation",
+        "label": "Change Validation",
+        "score": 60,
+        "summary": "O hook PostToolUse roda o lint depois de cada Edit/Write e o check:ca liga CAs a testes. Mas a suíte ainda tem um único teste (GET /saude), nenhuma falha e reparo foi observado, e o hook não mostra nada quando o lint passa, então a criação da spec 002 aparece como mudança sem verificação.",
+        "findingRefs": [
+          "lint-hook-silent-on-success"
+        ]
+      },
+      {
+        "id": "reliable-delivery",
+        "label": "Reliable Delivery",
+        "score": 45,
+        "summary": "O commit 607234e só passou por npm test e lint porque o agente seguiu o CLAUDE.md. Não há git hook, hook de PreToolUse para git commit, nem CI, e o commit foi direto na main. Aprovação de alto risco e recuperação ainda não se aplicam (sem efeito externo).",
+        "findingRefs": [
+          "commit-gate-still-agent-dependent"
+        ]
+      },
+      {
+        "id": "learning-capture",
+        "label": "Learning Capture",
+        "score": 50,
+        "summary": "Houve um ciclo de aprendizado real: o achado do relatório 1 virou o gate check:ca, e a skill nova-spec foi usada numa tarefa. Mas tudo aconteceu numa única sessão, sem uma tarefa posterior comparável que mostre melhora.",
+        "findingRefs": [
+          "single-session-no-later-comparison"
+        ]
+      }
+    ],
+    "aiAgentPractice": {
+      "inspectedSurfaces": [
+        "Rules",
+        "Skills",
+        "Hooks"
+      ],
+      "coverageRows": [
+        {
+          "surface": "Rules",
+          "scopes": [
+            "Project"
+          ],
+          "count": 1,
+          "paths": [
+            "CLAUDE.md"
+          ]
+        },
+        {
+          "surface": "Skills",
+          "scopes": [
+            "Project"
+          ],
+          "count": 1,
+          "paths": [
+            ".claude/skills/nova-spec/SKILL.md"
+          ]
+        },
+        {
+          "surface": "Hooks",
+          "scopes": [
+            "Project"
+          ],
+          "count": 1,
+          "paths": [
+            ".claude/settings.json"
+          ]
+        }
+      ]
+    },
+    "assignmentSummaries": []
+  },
+  "findings": [
+    {
+      "id": "commit-gate-still-agent-dependent",
+      "title": "Testes e lint antes do commit só acontecem se o agente lembrar",
+      "severity": "Medium",
+      "reason": "Fato: o AGENTS.md exige npm test e npm run lint antes de todo commit. O settings.json agora tem um hook PostToolUse que roda o lint depois de Edit/Write, mas nenhum gate roda no momento do commit: não há hook PreToolUse para git commit, .git/hooks só tem os exemplos padrão e não existe CI. Nesta sessão, o commit 607234e passou pelos dois comandos só porque o agente seguiu o CLAUDE.md, e foi direto na main. Inferência: um commit feito por outra sessão, por outro agente ou à mão entra sem verificação, e o npm test nunca é forçado. Dono: .claude/settings.json (hook) ou um git hook versionado. Incerteza: proteção de branch no repositório remoto não foi observada.",
+      "dimensionRefs": [
+        "reliable-delivery"
+      ],
+      "subdimensionRefs": [
+        "acceptance-evidence"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nTorne obrigatória a regra do AGENTS.md 'npm test e npm run lint passam antes de todo commit'.\n\n- Em .claude/settings.json, acrescente um hook PreToolUse para a ferramenta Bash que, quando o comando for um `git commit`, rode `npm test` e `npm run lint` e bloqueie o commit (exit 2) se algum falhar. Mantenha o hook PostToolUse de lint que já existe.\n- Não altere .claude/settings.local.json nem configurações de usuário.\n- Acrescente no AGENTS.md uma linha dizendo que o gate existe.\n\n## Validation\n\n- Quebre um teste de propósito, peça um commit e confirme que o hook bloqueia\n- Desfaça a quebra e confirme que o commit é permitido",
+      "expectedArtifact": "Hook",
+      "expectedOutput": [
+        "Um hook versionado que bloqueia `git commit` quando npm test ou npm run lint falham."
+      ]
+    },
+    {
+      "id": "spec-approval-still-unmarked",
+      "title": "O agente continua sem saber se uma spec está aprovada para virar código",
+      "severity": "Medium",
+      "reason": "Fato: o AGENTS.md diz 'sem spec aprovada, não há código', mas nenhuma spec tem marcador de aprovação: a 001 está como 'versão 2' e a 002 como 'rascunho'. O _modelo.md só prevê 'Status: rascunho', e a revisão cruzada da 001 continua sem preencher. A spec 001 também manda as rotas HTTP para um 001-plano.md que não existe em docs/specs/. Inferência: diante de 'implemente a spec 001', o agente não tem como decidir se pode começar nem quais rotas criar. Dono: docs/specs/_modelo.md e o cabeçalho de cada spec. Incerteza: nenhuma tentativa de implementação foi observada nesta janela. Esse achado já existia no relatório 1 e não foi tratado.",
+      "dimensionRefs": [
+        "task-understanding"
+      ],
+      "subdimensionRefs": [
+        "goal-understanding"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nDefina como o agente reconhece uma spec aprovada.\n\n- Proponha (sem editar, porque o CLAUDE.md diz que specs são somente leitura) um valor fechado para a linha 'Status' do docs/specs/_modelo.md, por exemplo rascunho | aprovada, e quem aprova.\n- Depois da aprovação da equipe, aplique no modelo e nas specs 001 e 002, e acrescente no AGENTS.md: 'só implemente spec com Status: aprovada'.\n- Para a spec 001, crie o 001-plano.md com as rotas HTTP ou retire a referência a ele.\n\n## Validation\n\n- Peça 'implemente a spec 002' e confirme que o agente recusa por estar em rascunho\n- Confirme que todo arquivo citado pela spec 001 existe em docs/specs/",
+      "expectedArtifact": "Document",
+      "expectedOutput": [
+        "Um campo de status com valores fechados no modelo de spec e uma regra no AGENTS.md que impede implementar spec não aprovada."
+      ]
+    },
+    {
+      "id": "env-deny-covers-only-read-and-cat",
+      "title": "O .env ainda pode ser lido por comandos do shell que não são cat",
+      "severity": "Low",
+      "reason": "Fato: o AGENTS.md proíbe ler ou imprimir o .env. O settings.json agora nega Read(./.env), Read(./.env.*) e Bash(cat .env*), o que corrige parte do achado do relatório 1. Mas comandos como head, tail, grep, type, Get-Content ou node -e lendo o arquivo não estão na lista de bloqueio. Nesta sessão o pedido de leitura foi recusado pela instrução, não pelo bloqueio, que nem chegou a disparar. Inferência: um agente que ignore a instrução lê o .env por outro comando sem nenhuma barreira. Dono: .claude/settings.json. Incerteza: nenhuma leitura indevida foi observada; o padrão exato de correspondência do deny para Bash não foi testado.",
+      "dimensionRefs": [
+        "controlled-execution"
+      ],
+      "subdimensionRefs": [
+        "permission-boundary"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nFeche as outras rotas de leitura do .env sem quebrar `cp .env.example .env`.\n\n- Em .claude/settings.json, acrescente um hook PreToolUse para Bash que bloqueie (exit 2) comandos que leiam .env ou .env.* que não sejam .env.example, ou amplie o deny com os leitores mais comuns (head, tail, grep, type, Get-Content, less, more).\n- Mantenha os denies atuais.\n\n## Validation\n\n- Peça ao agente para rodar `head .env` e confirme que é bloqueado\n- Confirme que `cp .env.example .env` continua permitido",
+      "expectedArtifact": "Hook",
+      "expectedOutput": [
+        "Uma barreira que bloqueia a leitura do .env por qualquer comando do shell, não só por cat."
+      ]
+    },
+    {
+      "id": "lint-hook-silent-on-success",
+      "title": "O hook de lint não deixa rastro quando passa, então não dá para provar que rodou",
+      "severity": "Low",
+      "reason": "Fato: o hook PostToolUse roda `npm run lint --silent 1>&2 || exit 2`. Quando o lint passa, ele sai com 0 e o Claude Code não mostra nada ao agente nem na conversa. Nesta sessão a spec 002 foi criada com Write, e os fatos da sessão registram essa tarefa como 'mudança sem verificação'. A seção 3 do docs/harness/evidencias.md continua sem preencher. Inferência: o hook pode estar funcionando, mas nem o agente nem a equipe conseguem ver isso numa edição normal; só uma falha de lint aparece. Dono: o comando do hook em .claude/settings.json. Incerteza: a execução do hook nesta sessão não foi observada.",
+      "dimensionRefs": [
+        "change-validation"
+      ],
+      "subdimensionRefs": [
+        "relevant-check"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nFaça o hook PostToolUse de lint deixar uma confirmação visível quando passa.\n\n- Em .claude/settings.json, ajuste o comando do hook existente para que, no sucesso, ele emita uma saída que o Claude Code mostra ao agente (confira nos docs de hooks do Claude Code o formato suportado para PostToolUse) dizendo que o lint passou. Mantenha o bloqueio (exit 2) na falha.\n- Não crie um segundo hook.\n\n## Validation\n\n- Edite um arquivo qualquer e confirme que a confirmação do lint aparece na sessão\n- Introduza um erro de lint e confirme que o hook ainda bloqueia",
+      "expectedArtifact": "Hook",
+      "expectedOutput": [
+        "O mesmo hook de lint, agora com uma confirmação visível no sucesso que serve de evidência."
+      ]
+    },
+    {
+      "id": "single-session-no-later-comparison",
+      "title": "Ainda não há uma segunda tarefa para mostrar que a skill e os gates melhoraram o resultado",
+      "severity": "Low",
+      "reason": "Fato: a janela de 30 dias tem uma única sessão, esta, com três tarefas: o teste do .env, a criação da spec 002 com a skill nova-spec e o commit. A skill foi acionada sem ser citada e o achado do relatório 1 virou o check:ca, mas cada mecanismo foi usado uma vez, sem outra tarefa comparável depois. Inferência: dá para dizer que os mecanismos existem e foram exercitados, não que melhoraram o trabalho. Dono: o próprio ciclo de medição do harness. Incerteza: sessões fora deste workspace não foram consideradas.",
+      "dimensionRefs": [
+        "learning-capture"
+      ],
+      "subdimensionRefs": [
+        "later-validation"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nCrie a evidência comparável que falta, sem mexer em código.\n\n- Numa sessão nova, peça uma segunda spec ou a implementação de um CA da spec 001 (depois de aprovada) e registre no docs/harness/evidencias.md se a skill foi acionada, se o hook rodou e se o check:ca apontou o que faltava.\n- Rode /better-harness de novo depois dessa sessão.\n\n## Validation\n\n- O próximo relatório mostra pelo menos duas sessões na janela\n- A seção de Learning Capture cita uma tarefa posterior comparável",
+      "expectedArtifact": "Document",
+      "expectedOutput": [
+        "Uma segunda sessão de trabalho registrada que permita comparar o antes e o depois dos mecanismos."
+      ]
+    }
+  ]
+}

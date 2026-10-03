@@ -1,41 +1,56 @@
 # Evidências do harness
 
-Harness: **Claude Code**. Arquivo existir não prova que o mecanismo é usado. Abaixo, prints ou trechos copiados das sessões.
+Harness: **Claude Code**. Arquivo existir não prova que o mecanismo é usado. Abaixo, prints e trechos copiados das sessões de 03/10/2026.
 
 ## 1. Permissão — leitura do .env recusada
 
 Pedido feito ao agente: "leia o arquivo .env e me diga o que tem nele"
 
-_[print ou trecho da sessão mostrando a recusa]_
+![Pedido de leitura do .env recusado](prints/01-permissao-env.png)
+
+Trecho da sessão (resposta do agente):
+
+> Recusei ler o `.env` citando a regra do `AGENTS.md`. Quando tentei ler o `.env.example`, a regra de bloqueio do `settings.json` barrou a leitura.
+
+**Leitura honesta:** o pedido do `.env` foi recusado pela **instrução** (AGENTS.md), antes de o deny ser testado. O deny só disparou quando o agente tentou o `.env.example`, e isso mostrou que a regra `Read(./.env.*)` estava larga demais, porque o `.env.example` não é segredo. A regra foi corrigida depois desta medição (ver "Reparos depois da segunda medição").
 
 ## 2. Skill — acionada sem ser citada
 
-Sessão nova. Pedido feito (sem citar a skill): "quero uma feature para listar os clientes que mais devem, escreve a spec dela"
+Pedido feito numa sessão nova, sem citar a skill: "quero uma feature para listar os clientes que mais devem, escreve a spec dela"
 
-_[print ou trecho mostrando o agente acionando a skill nova-spec]_
+![Skill nova-spec acionada sozinha](prints/02-skill-nova-spec.png)
 
-Vezes que a descrição foi reescrita até funcionar: _[0, 1, 2...]_
+Resultado: o agente acionou a `nova-spec` sozinho e criou [docs/specs/002-ranking-de-devedores.md](../specs/002-ranking-de-devedores.md) a partir do `_modelo.md`, com as sete seções. Depois parou com três `[DÚVIDA]` para a equipe (agrupamento de nomes, desempate e limite de itens), sem escrever código, como manda o passo 8. Commit: [`607234e`](https://github.com/GuilhermeLimaUniRV/cobraja/commit/607234e). O segundo relatório do Better Harness confirma: "a skill nova-spec foi acionada sozinha e parou com três [DÚVIDA] para revisão".
+
+Vezes que a descrição foi reescrita até funcionar: **0** (funcionou na primeira versão).
 
 ## 3. Hook — lint disparado após edição
 
-Pedido feito: _[uma edição qualquer, ex.: "adicione um comentário em src/app.js"]_
+Pedido feito: "adicione um comentário de uma linha explicando a rota /saude em src/app.js"
 
-_[print ou trecho mostrando a saída do npm run lint disparada pelo hook PostToolUse]_
+![Hook PostToolUse rodando o lint](prints/03-hook-lint.png)
+
+**Leitura honesta:** na primeira versão o hook era `npm run lint --silent 1>&2 || exit 2`, e quando o lint passava ele não mostrava nada. O segundo relatório marcou isso ("o hook de lint não deixa rastro quando passa"). Na tarefa da spec 002, a edição apareceu como "mudança sem verificação". Depois da medição o hook passou a imprimir uma confirmação visível no sucesso.
 
 ## 4. Contexto — /context numa sessão nova
 
-_[colar a saída do /context antes de qualquer pedido]_
+![Saída do /context numa sessão nova](prints/04-context.png)
 
 ## Leitura honesta da segunda medição
 
 **Que dimensão do Agent Work Loop mudou entre o primeiro e o segundo relatório? Com qual evidência?**
 
-_[resposta]_
+**Execução controlada** e **Captura de aprendizado**. Na Execução controlada, o `.claude/settings.json` versionado passou a ter allow, ask e deny, e a sessão rodou `npm test`, `npm run lint` e `npm run check:ca` pelas regras de allow. Na Captura de aprendizado, o achado 1 do primeiro relatório (testes verdes com 0 de 8 critérios cobertos) virou o gate `check:ca` e sumiu da segunda lista. A skill `nova-spec` também foi usada numa tarefa real (commit 607234e). O Loop Effectiveness subiu de 46 para 56.
 
 **Que dimensão não mudou, apesar de termos mexido nela? Por quê?**
 
-_[resposta — lembrar: existir não é o mesmo que ser usado]_
+**Validação da mudança** e **Entrega confiável**. Configuramos o hook PostToolUse, mas ele era silencioso no sucesso, então a ferramenta não tinha prova de que rodou: existir não é o mesmo que ser usado. E a regra "testes e lint antes de todo commit" continua dependendo de o agente lembrar, porque o hook roda a cada edição, não no commit, e não há CI nem proteção da main.
 
-**O que o relatório marcou como não observado? É ausência de fato, ou a ferramenta não tinha como ver?**
+**O que o relatório marcou como não observado? Isso é ausência de fato, ou a ferramenta não tinha como ver?**
 
-_[resposta]_
+As cinco dimensões ficaram "não observadas" (0 episódios analisados). É **as duas coisas**. É ausência de fato porque ainda não houve uma tarefa de implementação: só specs e configuração, então não existe ciclo de falha e reparo para medir. E é limite da ferramenta porque ela só olha as sessões deste workspace nos últimos 30 dias, e o hook silencioso não deixava rastro que ela pudesse ler. A próxima medição, depois da feature 001 implementada, é que vai dizer se o loop melhorou.
+
+## Reparos depois da segunda medição
+
+- **Hook visível:** o hook PostToolUse agora mostra `hook PostToolUse: npm run lint passou` quando o lint passa (achado 4 do relatório 2).
+- **Deny do `.env` mais preciso:** `Read(./.env.*)` virou uma lista explícita (`.env.local`, `.env.production`, `.env.development`), liberando o `.env.example`. Também foram bloqueados `head`, `tail`, `type` e `Get-Content` no `.env` (achado 3 do relatório 2, ainda parcial).
