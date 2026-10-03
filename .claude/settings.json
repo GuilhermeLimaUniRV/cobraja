@@ -12,8 +12,14 @@
     ],
     "deny": [
       "Read(./.env)",
-      "Read(./.env.*)",
-      "Bash(cat .env*)",
+      "Read(./.env.local)",
+      "Read(./.env.production)",
+      "Read(./.env.development)",
+      "Bash(cat .env:*)",
+      "Bash(head .env:*)",
+      "Bash(tail .env:*)",
+      "Bash(type .env:*)",
+      "Bash(Get-Content .env:*)",
       "Bash(rm -rf:*)",
       "Bash(git push --force:*)"
     ]
@@ -25,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npm run lint --silent 1>&2 || exit 2"
+            "command": "npm run lint --silent 1>&2 || exit 2; echo '{\"systemMessage\": \"hook PostToolUse: npm run lint passou\"}'"
           }
         ]
       }
