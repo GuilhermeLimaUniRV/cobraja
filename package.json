@@ -11,7 +11,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "check:ca": "node scripts/verificar-cas.js"
   },
   "dependencies": {
     "express": "5.2.1"

@@ -10,6 +10,7 @@ cp .env.example .env # configuração local; o .env nunca é commitado
 npm run dev          # sobe em http://localhost:3000 (GET /saude responde {"status":"ok"})
 npm test             # roda todos os testes (node --test); passa antes de todo commit
 npm run lint         # ESLint; zero erros antes de todo commit
+npm run check:ca -- 001  # lista os CA-xx da spec 001 sem teste; falha enquanto faltar algum
 ```
 
 ## Stack
@@ -19,14 +20,14 @@ Node.js 24 · Express 5.2 · testes com `node:test` (nativo) · ESLint 10 · ES 
 ## Estrutura
 
 - `src/`: código da aplicação (`app.js` monta as rotas, `server.js` só sobe o servidor)
-- `test/`: testes; um arquivo por feature, um teste por critério de aceite (CA-xx)
+- `scripts/`: utilitários do projeto (`verificar-cas.js`) · `test/`: testes; um arquivo por feature, um teste por critério de aceite (CA-xx)
 - `docs/specs/`: specs das features (`NNN-<feature>.md`), fonte da verdade · `docs/harness/`: relatórios do harness
 
 ## Regras do projeto
 
 - Toda feature começa por uma spec em `docs/specs/`. Sem spec aprovada, não há código.
 - A spec é a fonte da verdade. Se a implementação precisar mudar um comportamento, mude a spec primeiro, no mesmo pull request.
-- Cada critério de aceite vira um teste com o id no nome (ex.: `CA-03: data futura é rejeitada`).
+- Cada critério de aceite vira um teste com o id no nome (ex.: `CA-03: data futura é rejeitada`), num arquivo `test/NNN-<feature>.test.js`. Uma feature só está pronta quando `npm test` passa **e** `npm run check:ca -- NNN` passa.
 - Valores em dinheiro são guardados em centavos (inteiro), nunca em ponto flutuante.
 - Mensagem de commit cita a spec e o critério: `feat(001): marca serviço como pago (CA-04)`.
 - Nunca leia, imprima ou commite o `.env` nem qualquer token, senha ou chave.
