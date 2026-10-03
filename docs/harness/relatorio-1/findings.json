@@ -1,0 +1,168 @@
+{
+  "summary": {
+    "projectName": "cobraja",
+    "locale": "en",
+    "modelId": "agent-work-loop-v4",
+    "reportContractVersion": 25,
+    "overview": "Linha de base antes da configuração do harness: o AGENTS.md e a spec 001 dão bom contexto, e npm test/npm run lint rodam, mas todas as regras (testes antes do commit, CA-xx nos testes, .env protegido, spec aprovada) são só texto. Nenhum gate, permissão ou hook as aplica, e há só uma sessão observada, que é esta própria revisão.",
+    "dimensions": [
+      {
+        "id": "task-understanding",
+        "label": "Task Understanding",
+        "score": 55,
+        "summary": "AGENTS.md curto e específico e spec 001 detalhada (CA-01 a CA-08); mas a spec não tem marcador de aprovação e remete as rotas HTTP a um 001-plano.md que não existe.",
+        "findingRefs": [
+          "spec-approval-and-plan-missing"
+        ]
+      },
+      {
+        "id": "controlled-execution",
+        "label": "Controlled Execution",
+        "score": 55,
+        "summary": "npm test e npm run lint foram executados com sucesso e o Node está fixado; a proibição de ler o .env existe só como instrução, sem permissão de deny.",
+        "findingRefs": [
+          "env-read-not-denied"
+        ]
+      },
+      {
+        "id": "change-validation",
+        "label": "Change Validation",
+        "score": 50,
+        "summary": "A suíte roda rápido, mas só cobre GET /saude; nada liga os CA-xx da spec aos testes, então npm test fica verde com 0 de 8 CAs cobertos.",
+        "findingRefs": [
+          "ca-test-traceability-gate"
+        ]
+      },
+      {
+        "id": "reliable-delivery",
+        "label": "Reliable Delivery",
+        "score": 35,
+        "summary": "Commits vão direto na main sem CI, PR ou hook; a regra 'npm test e lint passam antes de todo commit' não tem fronteira de aceite que a verifique. Aprovação de alto risco e recuperação não se aplicam ainda (sem efeito externo).",
+        "findingRefs": [
+          "commit-gates-prose-only"
+        ]
+      },
+      {
+        "id": "learning-capture",
+        "label": "Learning Capture",
+        "score": 35,
+        "summary": "Revisão concluída com evidência insuficiente: a única sessão na janela é esta revisão, sem episódios de implementação para detectar repetição ou validar melhorias.",
+        "findingRefs": [
+          "baseline-session-evidence-gap"
+        ]
+      }
+    ],
+    "aiAgentPractice": {
+      "inspectedSurfaces": [
+        "Rules"
+      ],
+      "coverageRows": [
+        {
+          "surface": "Rules",
+          "scopes": [
+            "Project"
+          ],
+          "count": 1,
+          "paths": [
+            "AGENTS.md"
+          ]
+        },
+        {
+          "surface": "Custom Agents",
+          "scopes": [
+            "Project"
+          ],
+          "count": 0
+        }
+      ]
+    },
+    "assignmentSummaries": []
+  },
+  "findings": [
+    {
+      "id": "ca-test-traceability-gate",
+      "title": "npm test fica verde com 0 de 8 critérios de aceite da spec 001 cobertos",
+      "severity": "Medium",
+      "reason": "Fato: o AGENTS.md exige um teste por critério de aceite com o id no nome (CA-xx) e 'prove antes de dizer que terminou'; a spec 001 define CA-01 a CA-08, mas o único teste é o smoke de GET /saude e npm test passa. Inferência: um agente pode declarar a feature 001 pronta com a suíte verde faltando CAs, porque nenhum comando compara os CA-xx da spec com os nomes dos testes. Dono: test/ e um script em package.json. Incerteza: a feature ainda não começou, então a lacuna é do gate, não da cobertura atual.",
+      "dimensionRefs": [
+        "change-validation"
+      ],
+      "subdimensionRefs": [
+        "relevant-check"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nAdicione o menor verificador de rastreabilidade CA → teste no CobraJá, sem mudar a spec nem o código de app.\n\n- Leia os ids CA-xx de docs/specs/NNN-*.md (ignore _modelo.md e *-revisao.md) e compare com os nomes dos testes em test/.\n- Exponha como um script novo no package.json (por exemplo `npm run check:ca`), separado de `npm test`, para não quebrar a suíte antes da feature existir.\n- Registre no AGENTS.md, na seção Comandos, que o script deve passar antes de declarar uma feature pronta.\n\n## Validation\n\n- Rode o script agora e confirme que ele lista CA-01..CA-08 da spec 001 como sem teste\n- Rode npm test e npm run lint e confirme que continuam passando",
+      "expectedArtifact": "Script de verificação",
+      "expectedOutput": [
+        "Um comando do projeto que lista os CA-xx sem teste correspondente e falha enquanto houver algum, citado no AGENTS.md como prova de 'pronto'."
+      ]
+    },
+    {
+      "id": "commit-gates-prose-only",
+      "title": "'Testes e lint passam antes de todo commit' não é verificado em nenhum ponto",
+      "severity": "Medium",
+      "reason": "Fato: o AGENTS.md diz que npm test passa e npm run lint tem zero erros antes de todo commit, e define o formato de mensagem com spec e CA. Não existe hook do Claude Code (.claude/settings.json ausente), git hook, script de pre-commit, commitlint nem CI (.github ausente), e os dois commits foram direto na main. Inferência: um commit com teste falhando ou mensagem fora do formato chega à main sem nenhuma barreira. Dono: .claude/settings.json (hook) ou CI. Incerteza: não houve sessão de implementação, então nenhuma violação foi observada; proteção de branch no host remoto não foi observada.",
+      "dimensionRefs": [
+        "reliable-delivery"
+      ],
+      "subdimensionRefs": [
+        "acceptance-evidence"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nTorne obrigatória, no Claude Code, a regra do AGENTS.md 'npm test e npm run lint passam antes de todo commit'.\n\n- Crie .claude/settings.json (versionado) com um hook PreToolUse para a ferramenta Bash que, quando o comando for um `git commit`, rode `npm test` e `npm run lint` e bloqueie o commit se algum falhar.\n- Não altere .claude/settings.local.json nem configurações de usuário.\n- Mantenha o resto do AGENTS.md; só acrescente uma linha dizendo que o hook existe.\n\n## Validation\n\n- Com um teste propositalmente quebrado numa cópia de trabalho, peça um commit e confirme que o hook bloqueia\n- Desfaça a quebra, rode npm test e npm run lint e confirme que o commit é permitido",
+      "expectedArtifact": "Hook",
+      "expectedOutput": [
+        "Um hook versionado do Claude Code que bloqueia `git commit` quando npm test ou npm run lint falham."
+      ]
+    },
+    {
+      "id": "spec-approval-and-plan-missing",
+      "title": "O agente não consegue saber se a spec 001 está aprovada nem quais rotas criar",
+      "severity": "Medium",
+      "reason": "Fato: o AGENTS.md diz 'sem spec aprovada, não há código', mas a spec 001 só tem 'Status: versão 2', sem campo de aprovação, e 001-revisao.md está apenas com placeholders. A spec delega os caminhos HTTP a um 001-plano.md que não existe no repositório. Inferência: ao implementar a 001, o agente vai precisar parar para perguntar ou inventar rotas, o que contradiz 'a spec é a fonte da verdade'. Dono: docs/specs/. Incerteza: a aprovação pode ter acontecido fora do repositório (em aula).",
+      "dimensionRefs": [
+        "task-understanding"
+      ],
+      "subdimensionRefs": [
+        "goal-understanding"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nDeixe a spec 001 pronta para implementação sem ambiguidade de aprovação ou interface. Não escreva código de app.\n\n- Acrescente à spec 001 um campo de status verificável (por exemplo 'Status: aprovada em dd/mm/aaaa por <equipe>'), preenchido pelo humano responsável; não invente aprovação.\n- Crie docs/specs/001-plano.md com os caminhos HTTP de cada operação da spec, citando os CA-xx que cada rota atende. Pergunte ao usuário antes de escolher URLs.\n- Se o modelo _modelo.md tiver um campo de status, use o mesmo formato.\n\n## Validation\n\n- Confirme que todo CA-01..CA-08 aparece em pelo menos uma rota do 001-plano.md\n- Confirme que a spec tem um status de aprovação preenchido por humano",
+      "expectedArtifact": "Spec",
+      "expectedOutput": [
+        "Spec 001 com status de aprovação explícito e um 001-plano.md que mapeia cada CA para uma rota HTTP."
+      ]
+    },
+    {
+      "id": "env-read-not-denied",
+      "title": "Nada impede o agente de ler ou imprimir o .env, só o commit é bloqueado",
+      "severity": "Low",
+      "reason": "Fato: o AGENTS.md proíbe ler, imprimir ou commitar o .env; o .gitignore cobre .env e .env.* (exceto .env.example), mas não existe .claude/settings.json com permissions.deny para leitura do .env nem hook de segredos. Inferência: a proteção contra leitura depende só de o agente obedecer à instrução. Dono: .claude/settings.json. Incerteza: o .env.example só declara PORT, então a exposição atual é baixa; configurações de usuário ou organização fora do repositório não foram observadas.",
+      "dimensionRefs": [
+        "controlled-execution"
+      ],
+      "subdimensionRefs": [
+        "permission-boundary"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nAplique a regra 'nunca leia o .env' como permissão do Claude Code no projeto, sem ler o arquivo.\n\n- Em .claude/settings.json (versionado), adicione regras de deny para leitura de ./.env e ./.env.* mantendo .env.example acessível.\n- Não abra, copie nem imprima o .env durante a mudança.\n\n## Validation\n\n- Peça ao agente para ler o .env e confirme que a ferramenta é negada\n- Confirme que o .env.example continua legível e que npm test passa",
+      "expectedArtifact": "Permission rule",
+      "expectedOutput": [
+        "Regra de deny versionada que bloqueia a leitura de .env pelo agente."
+      ]
+    },
+    {
+      "id": "baseline-session-evidence-gap",
+      "title": "Não há sessões de trabalho para medir o loop do agente; a única é esta revisão",
+      "severity": "Low",
+      "reason": "Fato: na janela de 30 dias (provider claude) só há 1 sessão elegível, e ela é esta própria revisão: 0 edições, 0 checks, 0 episódios retidos. Inferência: não dá para dizer se o agente segue as regras do AGENTS.md nem detectar trabalho repetido; Learning Capture fica sem decisão. Dono: o próximo relatório do better-harness. Incerteza: sessões de outros providers ou da home do usuário não foram autorizadas.",
+      "dimensionRefs": [
+        "learning-capture"
+      ],
+      "subdimensionRefs": [
+        "lifecycle-repeat-detection"
+      ],
+      "aiFixPrompt": "/better-harness fix this issue\n\nNão crie Skill, Memory nem automação agora. Gere evidência comparável para o próximo relatório.\n\n- Faça pelo menos duas tarefas reais com o Claude Code neste repositório (por exemplo, implementar CAs da spec 001), cada uma terminando com npm test e npm run lint.\n- Depois rode de novo o /better-harness com uma janela que cubra essas sessões.\n\n## Validation\n\n- O novo relatório mostra pelo menos 2 Task Episodes com edição e validação\n- Learning Capture tem uma decisão de repetição (candidato ou janela limpa) em vez de evidência insuficiente",
+      "expectedArtifact": "Report",
+      "expectedOutput": [
+        "Um segundo relatório com episódios de implementação comparáveis para medir o efeito do harness."
+      ]
+    }
+  ]
+}
