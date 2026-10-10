@@ -71,6 +71,13 @@ export function rotasDeServicos({ hoje }) {
     res.json(lista.map(paraResposta));
   });
 
+  // RN-06: soma em centavos só dos pendentes.
+  rotas.get('/total-a-receber', (req, res) => {
+    const pendentes = servicos.filter((s) => s.situacao === 'pendente');
+    const total = pendentes.reduce((soma, s) => soma + s.valor, 0);
+    res.json({ total: paraTexto(total), quantidadePendentes: pendentes.length });
+  });
+
   rotas.post('/:id/pagamento', (req, res) => {
     const servico = servicos.find((s) => String(s.id) === req.params.id);
     if (!servico) return res.status(404).json({ mensagem: 'Serviço não encontrado' });

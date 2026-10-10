@@ -130,3 +130,22 @@ test('CA-13: desempate na listagem', async (t) => {
   const r = await api('GET', '/servicos');
   assert.deepEqual(r.corpo.map((s) => s.id), [3, 1, 2]);
 });
+
+test('CA-06: total a receber', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico({ valor: 150.0 }));
+  await api('POST', '/servicos', servico({ valor: 89.9 }));
+  await api('POST', '/servicos', servico({ valor: 200.0 }));
+  await api('POST', '/servicos/3/pagamento');
+  const r = await api('GET', '/servicos/total-a-receber');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.corpo, { total: '239.90', quantidadePendentes: 2 });
+});
+
+test('CA-12: total sem pendentes', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico());
+  await api('POST', '/servicos/1/pagamento');
+  const r = await api('GET', '/servicos/total-a-receber');
+  assert.deepEqual(r.corpo, { total: '0.00', quantidadePendentes: 0 });
+});
