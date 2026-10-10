@@ -1,0 +1,66 @@
+// Feature 001: registro de serviços e controle de pagamento (docs/specs/001-registro-de-servicos.md).
+// Dados em memória nesta feature (D-05).
+import { Router } from 'express';
+import { paraCentavos, paraTexto } from './dinheiro.js';
+
+const FORMATO_DATA = /^\d{4}-\d{2}-\d{2}$/;
+
+function vazio(valor) {
+  return valor === undefined || valor === null || valor === '';
+}
+
+function textoComTamanho(valor, minimo, maximo) {
+  if (typeof valor !== 'string') return false;
+  const tamanho = valor.trim().length;
+  return tamanho >= minimo && tamanho <= maximo;
+}
+
+function dataValida(valor) {
+  if (typeof valor !== 'string' || !FORMATO_DATA.test(valor)) return false;
+  const data = new Date(`${valor}T00:00:00Z`);
+  return !Number.isNaN(data.getTime()) && data.toISOString().slice(0, 10) === valor;
+}
+
+// D-11: primeiro as verificações da RN-08 na ordem da seção Dados, depois RN-01 e RN-02.
+function validar(corpo, hoje) {
+  if (!textoComTamanho(corpo.cliente, 2, 80)) return 'Campo inválido: cliente';
+  if (!textoComTamanho(corpo.descricao, 3, 200)) return 'Campo inválido: descricao';
+  if (vazio(corpo.valor)) return 'Campo inválido: valor';
+  if (!dataValida(corpo.dataRealizacao)) return 'Campo inválido: dataRealizacao';
+  if (paraCentavos(corpo.valor) === null) return 'Valor inválido';
+  if (corpo.dataRealizacao > hoje) return 'Data de realização no futuro';
+  return null;
+}
+
+function paraResposta(servico) {
+  return { ...servico, valor: paraTexto(servico.valor) };
+}
+
+export function rotasDeServicos({ hoje }) {
+  const rotas = Router();
+  const servicos = [];
+
+  rotas.post('/', (req, res) => {
+    const corpo = req.body ?? {};
+    const erro = validar(corpo, hoje());
+    if (erro) return res.status(400).json({ mensagem: erro });
+
+    const servico = {
+      id: servicos.length + 1,
+      cliente: corpo.cliente.trim(),
+      descricao: corpo.descricao.trim(),
+      valor: paraCentavos(corpo.valor),
+      dataRealizacao: corpo.dataRealizacao,
+      situacao: 'pendente',
+      dataPagamento: null,
+    };
+    servicos.push(servico);
+    res.status(201).json(paraResposta(servico));
+  });
+
+  rotas.get('/', (req, res) => {
+    res.json(servicos.map(paraResposta));
+  });
+
+  return rotas;
+}
