@@ -13,6 +13,18 @@ npm run lint         # ESLint; zero erros antes de todo commit
 npm run check:ca -- 001  # lista os CA-xx da spec 001 sem teste; falha enquanto faltar algum
 ```
 
+## API (feature 001; rotas em `docs/specs/001-plano.md`)
+
+```bash
+curl -X POST localhost:3000/servicos -H "content-type: application/json" \
+  -d '{"cliente":"Maria Souza","descricao":"Troca de chuveiro","valor":150,"dataRealizacao":"2026-10-01"}'
+curl localhost:3000/servicos?situacao=pendente   # lista (filtro opcional: pendente | pago)
+curl -X POST localhost:3000/servicos/1/pagamento  # marca como pago
+curl localhost:3000/servicos/total-a-receber      # { total, quantidadePendentes }
+```
+
+No Windows, o `curl.exe` não envia acentos em UTF-8 quando o JSON vai direto na linha de comando: teste acentos com `npm test`, não com o curl.
+
 ## Stack
 
 Node.js 24 · Express 5.2 · testes com `node:test` (nativo) · ESLint 10 · ES Modules (`import`/`export`).
