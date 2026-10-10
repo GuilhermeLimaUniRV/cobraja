@@ -110,3 +110,23 @@ test('CA-08: serviço inexistente', async (t) => {
   assert.equal(r.status, 404);
   assert.equal(r.corpo.mensagem, 'Serviço não encontrado');
 });
+
+test('CA-07: filtro de pendentes', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico({ cliente: 'Ana', dataRealizacao: '2026-10-02' }));
+  await api('POST', '/servicos', servico({ cliente: 'Bruno', dataRealizacao: '2026-09-28' }));
+  await api('POST', '/servicos', servico({ cliente: 'Carla', dataRealizacao: '2026-09-01' }));
+  await api('POST', '/servicos/3/pagamento');
+  const r = await api('GET', '/servicos?situacao=pendente');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.corpo.map((s) => s.cliente), ['Bruno', 'Ana']);
+});
+
+test('CA-13: desempate na listagem', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico({ cliente: 'Primeiro', dataRealizacao: '2026-10-01' }));
+  await api('POST', '/servicos', servico({ cliente: 'Segundo', dataRealizacao: '2026-10-01' }));
+  await api('POST', '/servicos', servico({ cliente: 'Mais antigo', dataRealizacao: '2026-09-15' }));
+  const r = await api('GET', '/servicos');
+  assert.deepEqual(r.corpo.map((s) => s.id), [3, 1, 2]);
+});

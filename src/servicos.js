@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { paraCentavos, paraTexto } from './dinheiro.js';
 
 const FORMATO_DATA = /^\d{4}-\d{2}-\d{2}$/;
+const SITUACOES = ['pendente', 'pago'];
 
 function vazio(valor) {
   return valor === undefined || valor === null || valor === '';
@@ -59,7 +60,15 @@ export function rotasDeServicos({ hoje }) {
   });
 
   rotas.get('/', (req, res) => {
-    res.json(servicos.map(paraResposta));
+    const { situacao } = req.query;
+    if (situacao !== undefined && !SITUACOES.includes(situacao)) {
+      return res.status(400).json({ mensagem: 'Campo inválido: situacao' });
+    }
+    // RN-07: data de realização crescente, desempate por id.
+    const lista = servicos
+      .filter((s) => situacao === undefined || s.situacao === situacao)
+      .sort((a, b) => a.dataRealizacao.localeCompare(b.dataRealizacao) || a.id - b.id);
+    res.json(lista.map(paraResposta));
   });
 
   rotas.post('/:id/pagamento', (req, res) => {
