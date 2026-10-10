@@ -40,6 +40,8 @@ Node.js 24 · Express 5.2 · testes com `node:test` (nativo) · ESLint 10 · ES 
 - Toda feature começa por uma spec em `docs/specs/`. Sem spec aprovada, não há código.
 - A spec é a fonte da verdade. Se a implementação precisar mudar um comportamento, mude a spec primeiro, no mesmo pull request.
 - Cada critério de aceite vira um teste com o id no nome (ex.: `CA-03: data futura é rejeitada`), num arquivo `test/NNN-<feature>.test.js`. Uma feature só está pronta quando `npm test` passa **e** `npm run check:ca -- NNN` passa.
+- No plano de tarefas, confira o "Dado que" e o "E" de cada critério: se ele usa uma rota de outra tarefa, essa tarefa vem antes.
+- Para parar um servidor, encerre só o processo dele (pelo PID), nunca todos os processos `node`.
 - Valores em dinheiro são guardados em centavos (inteiro), nunca em ponto flutuante.
 - Mensagem de commit cita a spec e o critério: `feat(001): marca serviço como pago (CA-04)`.
 - Nunca leia, imprima ou commite o `.env` nem qualquer token, senha ou chave.

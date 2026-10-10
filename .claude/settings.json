@@ -21,6 +21,10 @@
       "Bash(type .env:*)",
       "Bash(Get-Content .env:*)",
       "Bash(rm -rf:*)",
+      "Bash(taskkill /IM:*)",
+      "Bash(taskkill //IM:*)",
+      "Bash(pkill:*)",
+      "Bash(killall:*)",
       "Bash(git push --force:*)"
     ]
   },
