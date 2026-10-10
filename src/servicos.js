@@ -62,5 +62,15 @@ export function rotasDeServicos({ hoje }) {
     res.json(servicos.map(paraResposta));
   });
 
+  rotas.post('/:id/pagamento', (req, res) => {
+    const servico = servicos.find((s) => String(s.id) === req.params.id);
+    if (!servico) return res.status(404).json({ mensagem: 'Serviço não encontrado' });
+    if (servico.situacao === 'pago') return res.status(409).json({ mensagem: 'Serviço já está pago' });
+
+    servico.situacao = 'pago';
+    servico.dataPagamento = hoje();
+    res.json(paraResposta(servico));
+  });
+
   return rotas;
 }

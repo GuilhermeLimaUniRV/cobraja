@@ -82,3 +82,31 @@ test('CA-11: limite máximo do valor', async (t) => {
   assert.equal(segundo.status, 400);
   assert.equal(segundo.corpo.mensagem, 'Valor inválido');
 });
+
+test('CA-04: marcar como pago', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico());
+  const r = await api('POST', '/servicos/1/pagamento');
+  assert.equal(r.status, 200);
+  assert.equal(r.corpo.id, 1);
+  assert.equal(r.corpo.situacao, 'pago');
+  assert.equal(r.corpo.dataPagamento, '2026-10-03');
+});
+
+test('CA-05: não paga duas vezes', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico());
+  const pago = await api('POST', '/servicos/1/pagamento');
+  const r = await api('POST', '/servicos/1/pagamento');
+  assert.equal(r.status, 409);
+  assert.equal(r.corpo.mensagem, 'Serviço já está pago');
+  const [depois] = (await api('GET', '/servicos')).corpo;
+  assert.equal(depois.dataPagamento, pago.corpo.dataPagamento);
+});
+
+test('CA-08: serviço inexistente', async (t) => {
+  const api = await novaApi(t);
+  const r = await api('POST', '/servicos/99/pagamento');
+  assert.equal(r.status, 404);
+  assert.equal(r.corpo.mensagem, 'Serviço não encontrado');
+});
