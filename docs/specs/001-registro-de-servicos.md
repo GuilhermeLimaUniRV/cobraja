@@ -1,6 +1,6 @@
 # Spec 001 — Registro de serviços e controle de pagamento
 
-> Status: versão 3 (endurecida no LAB 1 da Aula 08 e revisada pela equipe Noiva.AI, ver [001-revisao.md](001-revisao.md)) · Feature: 001 · Projeto: CobraJá
+> Status: versão 4 (endurecida no LAB 1 da Aula 08, revisada pela equipe Noiva.AI em [001-revisao.md](001-revisao.md) e atualizada na implementação, D-14) · Feature: 001 · Projeto: CobraJá
 
 ## 1. Objetivo
 
@@ -59,7 +59,7 @@ Nesta feature existe um único ator e nenhuma ação exige identificação (ver 
 - **RN-04** — Marcar um serviço pendente como pago muda a situação para `pago` e grava em `dataPagamento` a data de hoje no fuso de Brasília.
 - **RN-05** — Um serviço que já está pago não pode ser marcado como pago de novo. A tentativa é rejeitada com a mensagem `Serviço já está pago` e nada no serviço muda.
 - **RN-06** — A consulta do total a receber responde dois campos: `total`, a soma dos valores dos serviços com situação `pendente` (texto com 2 casas decimais), e `quantidadePendentes`, o número desses serviços. Sem serviços pendentes, a resposta é `total` `"0.00"` e `quantidadePendentes` `0`.
-- **RN-07** — A listagem de serviços mostra os mais antigos primeiro (data de realização crescente). Em caso de mesma data, o de menor `id` vem primeiro.
+- **RN-07** — A listagem de serviços mostra os mais antigos primeiro (data de realização crescente). Em caso de mesma data, o de menor `id` vem primeiro. O filtro de situação aceita só `pendente` ou `pago`; outro valor é rejeitado com a mensagem `Campo inválido: situacao` (D-14).
 - **RN-08** — O sistema rejeita o registro com a mensagem `Campo inválido: <nome do campo>`, sem criar serviço, quando um campo obrigatório não é enviado (ausente, `null` ou texto vazio), quando `cliente` ou `descricao` desrespeitam o tamanho da seção Dados, ou quando `dataRealizacao` não está no formato `AAAA-MM-DD` ou não é uma data de calendário válida (ex.: `03/10/2026` ou `2026-02-30`). Com mais de um campo errado, a mensagem cita só o primeiro na ordem da seção Dados: cliente, descricao, valor, dataRealizacao. As verificações da RN-08 vêm antes das da RN-01 e da RN-02 (D-11).
 
 ### Tabela de exemplos — RN-01 (a regra mais importante: é dinheiro)
@@ -149,6 +149,11 @@ Dado que os serviços 1 e 2 foram registrados com a mesma data de realização
 Quando o prestador lista os serviços
 Então o serviço 1 aparece antes do serviço 2
 
+**CA-14 — Filtro de situação inválido**
+Dado que existe um serviço pendente
+Quando o prestador lista os serviços com o filtro situação `cancelado`
+Então a resposta tem código 400 com a mensagem `Campo inválido: situacao`
+
 ## 7. Restrições
 
 - Node.js 24 e Express 5; respostas em JSON.
@@ -177,6 +182,7 @@ Cada ambiguidade encontrada na escrita, na revisão cruzada e nas três varredur
 | D-11 | Revisão cruzada: `valor` ausente cai na RN-08 ou na RN-01? Data `03/10/2026`? Vários campos errados? | Ausente, vazio ou fora do formato → RN-08 (`Campo inválido: <campo>`); enviado mas fora da faixa → RN-01; data válida mas futura → RN-02. Vários erros → só o primeiro na ordem da seção Dados. | Uma única mensagem por resposta mantém os critérios binários; a ordem fixa faz duas implementações responderem igual. |
 | D-12 | Revisão cruzada: qual o nome do campo da quantidade no total? | `quantidadePendentes`, junto de `total` (RN-06). | Sem nome fixo, cada implementação inventaria um e o CA-06 não seria verificável. |
 | D-13 | Revisão cruzada: os testes dependem das rotas, que estão no plano. | Mantido: rotas no `001-plano.md`, escrito e revisado antes de qualquer código (atividade de 10/10). Os critérios descrevem o que a API responde, não por onde. | Rota é decisão de interface; na spec ela engessaria a regra de negócio sem mudar o comportamento. |
+| D-14 | Implementação (T3 do plano): o que fazer com um filtro de situação diferente de `pendente`/`pago`? A versão 3 não dizia. | Rejeitar com `Campo inválido: situacao` (RN-07, CA-14). | Ignorar o filtro devolveria a lista inteira e esconderia o erro de quem chamou a API; segue o mesmo padrão da RN-08. |
 
 ### Resultado das três varreduras (Aula 08)
 
@@ -187,4 +193,4 @@ Cada ambiguidade encontrada na escrita, na revisão cruzada e nas três varredur
 
 ### Se o código fosse apagado agora, esta spec seria suficiente para reconstruí-lo?
 
-**Sim, para o comportamento.** Os campos, os limites, as mensagens de erro e a ordem entre elas, o formato do dinheiro na resposta, a ordem da listagem e o cálculo do total estão fechados. Cada critério de aceite (CA-01 a CA-13) vira um teste, e depois da revisão cruzada toda regra de negócio é coberta por pelo menos um critério. **O que a spec não fixa** são os caminhos exatos das rotas HTTP (por exemplo `POST /servicos`). Duas reconstruções teriam o mesmo comportamento com URLs diferentes. A equipe decidiu deixar isso no plano de tarefas (`001-plano.md`), porque é decisão de interface, não de negócio.
+**Sim, para o comportamento.** Os campos, os limites, as mensagens de erro e a ordem entre elas, o formato do dinheiro na resposta, a ordem da listagem e o cálculo do total estão fechados. Cada critério de aceite (CA-01 a CA-14) vira um teste, e depois da revisão cruzada toda regra de negócio é coberta por pelo menos um critério. **O que a spec não fixa** são os caminhos exatos das rotas HTTP (por exemplo `POST /servicos`). Duas reconstruções teriam o mesmo comportamento com URLs diferentes. A equipe decidiu deixar isso no plano de tarefas (`001-plano.md`), porque é decisão de interface, não de negócio.

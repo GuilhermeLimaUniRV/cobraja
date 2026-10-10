@@ -149,3 +149,11 @@ test('CA-12: total sem pendentes', async (t) => {
   const r = await api('GET', '/servicos/total-a-receber');
   assert.deepEqual(r.corpo, { total: '0.00', quantidadePendentes: 0 });
 });
+
+test('CA-14: filtro de situação inválido', async (t) => {
+  const api = await novaApi(t);
+  await api('POST', '/servicos', servico());
+  const r = await api('GET', '/servicos?situacao=cancelado');
+  assert.equal(r.status, 400);
+  assert.equal(r.corpo.mensagem, 'Campo inválido: situacao');
+});
