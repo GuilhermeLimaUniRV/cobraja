@@ -1,4 +1,5 @@
 // Valores em dinheiro: guardados em centavos (inteiro), devolvidos como texto com 2 casas (spec 001, D-10).
+// Centavos porque inteiro soma exato; em ponto flutuante 0.1 + 0.2 dá 0.30000000000000004.
 
 const MAXIMO_EM_CENTAVOS = 100000_00;
 
